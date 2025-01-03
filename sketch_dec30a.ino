@@ -1,23 +1,25 @@
 #include <LiquidCrystal.h>
 
-LiquidCrystal lcd(2,3,4,5,6,7);
+LiquidCrystal lcd(12,11,10,9,8,7);
 
-#define button1 8
-#define button2 9
-#define piezo 10
+#define button1 5
+#define button2 4
+#define piezo 6
 #define potentiometer A0
 #define tempSensor A1
 #define lightSensor A2
-#define echoPin 13
-#define trigPin 12 
+#define echoPin 3
+#define trigPin 2 
 
-#define encoderA 8  // Connect to CLK pin
-#define encoderB 9  // Connect to DT pin
-#define encoderBtn 11
+#define encoderA 13  // Connect to CLK pin
+#define encoderB 1  // Connect to DT pin
+#define encoderBtn 0
 
 int count = 1;  // Initial value, can be 1 to 60
 int encoderAState;
 int encoderALastState;
+int encoderBState;
+int encoderBLastState;
 
 int buttonState1, buttonState2 = 0;
 int num = 0;
@@ -50,6 +52,28 @@ int alarm2Minutes = 0;
 int alarm3Hours = 0;
 int alarm3Minutes = 0;
 
+int selected_ringtone = 1;
+bool active_buzzer = true;
+
+struct Tone{
+  public:
+    int pitch;
+    int duration;
+};
+ 
+struct Tones{
+  public:
+    char name;
+    Tone pattern[2];
+};
+ 
+Tones ringtones[2] = {
+  {"Ringtone 1", {{440, 500}, {600, 500}}},
+  {"Ringtone 2", {{300, 200}, {400, 200}}}  
+} ;
+
+
+
 void setup() {
   pinMode(button1, INPUT);
   pinMode(button2, INPUT);
@@ -69,6 +93,19 @@ void setup() {
 
 }
 
+
+void callAlarm(){
+  if(active_buzzer == false) return;
+ 
+  for(int i = 0; i < 2; i++){
+    Tone t = ringtones[selected_ringtone - 1].pattern[i];
+    tone(piezo, t.pitch, t.duration);
+    delay(t.duration + 50);
+  }
+  delay(50);
+ 
+}
+
 void loop() {
     // Clears the trigPin condition
   digitalWrite(trigPin, LOW);
@@ -77,6 +114,7 @@ void loop() {
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
+  callAlarm(); // Calls callAlarm function for buzzer
 
   duration = pulseIn(echoPin, HIGH);
   // Calculating the distance
@@ -144,32 +182,14 @@ lcd.print(temperatureC);
 lcd.print("C");
 
 if(hours == alarm1Hours && minutes == alarm1Minutes){
-  tone(piezo, 85); //Set the voltage to high and makes a noise
-  delay(1000);//Waits for 1000 milliseconds
-  noTone(piezo);//Sets the voltage to low and makes no noise
-  delay(1000);//Waits for 1000 milliseconds
+  active_buzzer = true;
 
   if(distance_cm < 4){
      alarm1Hours = 0;
      alarm1Minutes = 0;
+     active_buzzer = false;
    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -244,7 +264,7 @@ if(hours == alarm1Hours && minutes == alarm1Minutes){
   // int stateB = digitalRead(DTPin);  // Read the current state of pinB
 
   // // Detect changes in rotary encoder rotation
-  // if (stateA != lastStateCLK) {
+  // if (stateA != encoderALastState) {
   //   if (stateB != stateA) {  // Clockwise rotation
   //     value++;
   //   } else {  // Counterclockwise rotation
@@ -264,8 +284,8 @@ if(hours == alarm1Hours && minutes == alarm1Minutes){
   //   lcd.print(value);  // Display the current value
   // }
 
-  // lastStateCLK = stateA;  // Update the last state of pinA
-  // lastStateDT = stateB;  // Update the last state of pinB
+  // encoderALastState = stateA;  // Update the last state of pinA
+  // encoderBLastState = stateB;  // Update the last state of pinB
 
   // delay(50);  // Small delay to debounce the encoder
 
@@ -310,5 +330,4 @@ if(hours == alarm1Hours && minutes == alarm1Minutes){
 
 
   
-
 
