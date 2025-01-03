@@ -20,6 +20,8 @@ int encoderAState;
 int encoderALastState;
 int encoderBState;
 int encoderBLastState;
+boolean encoderPressed;
+boolean encoderRls;
 
 int buttonState1, buttonState2 = 0;
 int num = 0;
@@ -186,6 +188,10 @@ boolean triggerAlarm(){
   return false;
 }
 
+int menuIndex = 0;
+String previousScreen = "home";
+String currentScreen = "home";
+
 unsigned long previousMs = 0;
 void timeFetch(){
   unsigned long timeElapsedMs = millis();
@@ -206,61 +212,120 @@ void timeFetch(){
       hours -= 24;
     }
 
-    lcd.clear();
-    lcd.print("Time: ");
+    if(currentScreen == "home"){
+      lcd.clear();
+      lcd.print("Time: ");
 
-    if(hours < 10){ // Way here is pretty similar to gpt and feels like it can be improved
-      lcd.print(0);
-    }
-    lcd.print(hours);
-    lcd.print(":");
-
-    if(minutes < 10){
-      lcd.print(0);
-    }
-    lcd.print(minutes);
-    lcd.print(":");
-
-    if(seconds < 10){
-      lcd.print(0);
-    }
-    lcd.print(seconds);
-
-    int* nextAlarm = getNextAlarm();
-
-    if(nextAlarm[0] != -1){ //If alarm exists
-      lcd.setCursor(0, 1);
-      
-      lcd.print("Next:");
-
-      lcd.print(nextAlarm[0]);
-      lcd.print(":");
-      if(nextAlarm[1] < 10){
-        lcd.print("0");
+      if(hours < 10){ // Way here is pretty similar to gpt and feels like it can be improved
+        lcd.print(0);
       }
-      lcd.print(nextAlarm[1]);
+      lcd.print(hours);
+      lcd.print(":");
+
+      if(minutes < 10){
+        lcd.print(0);
+      }
+      lcd.print(minutes);
+      lcd.print(":");
+
+      if(seconds < 10){
+        lcd.print(0);
+      }
+      lcd.print(seconds);
+
+      int* nextAlarm = getNextAlarm();
+
+      if(nextAlarm[0] != -1){ //If alarm exists
+        lcd.setCursor(0, 1);
+        
+        lcd.print("Next:");
+
+        lcd.print(nextAlarm[0]);
+        lcd.print(":");
+        if(nextAlarm[1] < 10){
+          lcd.print("0");
+        }
+        lcd.print(nextAlarm[1]);
+
+      }
+
+
+
+      lcd.setCursor(15,1);
+
+      int reading = analogRead(tempSensor);
+      float voltage = reading * (5.0 / 1024.0);
+      float temperatureC = (voltage - 0.5) * 100;
+
+      lcd.print(temperatureC);
+      lcd.print("C");
 
     }
-
-
-
-    lcd.setCursor(15,1);
-
-    int reading = analogRead(tempSensor);
-    float voltage = reading * (5.0 / 1024.0);
-    float temperatureC = (voltage - 0.5) * 100;
-
-    lcd.print(temperatureC);
-    lcd.print("C");
 
     previousMs = timeElapsedMs;
 
   }
 
-
-
-
 }
+
+void menuScreen(){
+  char* menuOptions[5] = {
+    "Back",
+    "Menu 2",
+    "Menu 3",
+    "Menu 4",
+    "Menu 5",
+  };
+
+  lcd.setCursor(0, 0);
+  lcd.print("Scroll to select");
+  lcd.setCursor(0, 1);
+  lcd.print(">");
+  lcd.print(menuOptions[menuIndex]);
+
+   // Read the current state of rotary encoder
+  int stateA = digitalRead(encoderA);
+  int stateB = digitalRead(encoderB);
+
+  // Detect changes in rotary encoder rotation
+  if (stateA != encoderALastState) {
+    if (stateB != stateA) {  // Clockwise rotation
+      menuIndex++;
+      if (menuIndex >= 5) {
+        menuIndex = 0;  // Loop back to the first option
+      }
+    } else {  // Counterclockwise rotation
+      menuIndex--;
+      if (menuIndex < 0) {
+        menuIndex = 5 - 1;  // Loop back to the last option
+      }
+    }
+
+    // Clear and re-display the updated menu
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Scroll to select");
+    lcd.setCursor(0, 1);
+    lcd.print(">");
+    lcd.print(menuOptions[menuIndex]);
+
+    encoderALastState = stateA;  // Update last state of encoderA
+  }
+
+  encoderALastState = stateA;  // Update the last state of pinA
+  encoderBLastState = stateB;  // Update the last state of pinB
+
+ // Check if the button is pressed (button press will pull to LOW)
+  if (digitalRead(encoderBtn) == LOW) {  // Button is pressed
+    if (menuOptions[menuIndex] == "Back") {
+      currentScreen = "home";  // Go back to the home screen
+    }
+    delay(200);  // Small delay to debounce button press (prevent multiple presses)
+  }
+
+  delay(50);  // Small delay to debounce encoder
+}
+
 
 void loop() {
     // Clears the trigPin condition
@@ -276,8 +341,31 @@ void loop() {
   distance_cm = duration * 0.034 / 2; 
   distance_inch = duration * 0.0133 / 2;
 
+  if(currentScreen != previousScreen){ //Check if the screen has updated
+    lcd.clear();
+    previousScreen = currentScreen;
+  }
 
   timeFetch();
+  if(currentScreen == "menu"){
+    menuScreen();
+  }
+
+  int encoderBtnState = digitalRead(encoderBtn);  // Read the button state
+
+  if (encoderBtnState == LOW && encoderRls) { // If the button is pressed and was released
+      encoderPressed = true;  // Mark as pressed
+      encoderRls = false;  // Prevent immediate response
+      if (currentScreen == "home") {
+          currentScreen = "menu";  // Go to menu
+      } else if (currentScreen == "menu") {
+          currentScreen = "home";  // Go back to home from menu
+      }
+      delay(200); // Debounce
+  } else if (encoderBtnState == HIGH) {  // If the button released
+      encoderPressed = false;  // Mark as released
+      encoderRls = true;  // Allow button to be pressed
+  };
 
   if(triggerAlarm() == true){ // Checks alarm status variable to set off alarm
     active_buzzer = true;
