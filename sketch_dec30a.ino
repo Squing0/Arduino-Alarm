@@ -1,23 +1,25 @@
 #include <LiquidCrystal.h>
 
-LiquidCrystal lcd(2,3,4,5,6,7);
+LiquidCrystal lcd(12,11,10,9,8,7);
 
-#define button1 8
-#define button2 9
-#define piezo 10
+#define button1 5
+#define button2 4
+#define piezo 6
 #define potentiometer A0
 #define tempSensor A1
 #define lightSensor A2
-#define echoPin 13
-#define trigPin 12 
+#define echoPin 3
+#define trigPin 2 
 
-#define encoderA 8  // Connect to CLK pin
-#define encoderB 9  // Connect to DT pin
-#define encoderBtn 11
+#define encoderA 13  // Connect to CLK pin
+#define encoderB 1  // Connect to DT pin
+#define encoderBtn 0
 
 int count = 1;  // Initial value, can be 1 to 60
 int encoderAState;
 int encoderALastState;
+int encoderBState;
+int encoderBLastState;
 
 int buttonState1, buttonState2 = 0;
 int num = 0;
@@ -50,6 +52,41 @@ int alarm2Minutes = 0;
 int alarm3Hours = 0;
 int alarm3Minutes = 0;
 
+int selected_ringtone = 1; // Current selected ringtone 
+bool active_buzzer = false; // Controls if buzzer is audible or not.
+
+struct Tone{ // Individual Tone
+  public:
+    int pitch;
+    int duration;
+};
+ 
+struct Tones{ // Tones container
+  public:
+    char name;
+    Tone pattern[2];
+};
+ 
+Tones ringtones[2] = { // Ringtones along with tone and duration information
+  {"Ringtone 1", {{440, 200}, {600, 200}}},
+  {"Ringtone 2", {{300, 200}, {400, 200}}}  
+} ;
+
+struct Alarm{ // Alarm Object
+  public:
+    int hours;
+    int minutes;
+};
+
+
+Alarm setAlarms[3] = { //All of the user set alarms
+  {14,0},
+  {18,0},
+  {21,0},
+};
+
+
+
 void setup() {
   pinMode(button1, INPUT);
   pinMode(button2, INPUT);
@@ -69,6 +106,88 @@ void setup() {
 
 }
 
+int prevMs = 0; 
+int toneIndex = 0; // Keep track of tone within ringtone
+int toneDuration = 0; // Current tone duration
+int toneGap = 0; 
+unsigned long endTimeLast = 0;
+unsigned long repeatStartTime = 0;
+
+void callAlarm() {
+  if (!active_buzzer) return;  // Do not run if buzzer is not active
+
+  unsigned long currentMs = millis();  // Get the current time in ms (non-blocking)
+
+  // Check current end time
+  if (toneIndex < 2 && currentMs - endTimeLast >= 0) {
+    Tone t = ringtones[selected_ringtone - 1].pattern[toneIndex];  // Get the tone details (pitch, duration)
+
+    // Play tone
+    tone(piezo, t.pitch, t.duration);
+
+    // Update the time
+    endTimeLast = currentMs + t.duration;
+
+    // Move to next index
+    toneIndex++;
+  }
+
+  // Check if entire pattern played
+  if (toneIndex >= 2) {
+    if (currentMs - repeatStartTime >= toneGap) {
+      toneIndex = 0;  // Reset to start
+      repeatStartTime = currentMs;  // Set the time
+    }
+  }
+
+}
+
+
+int* getNextAlarm(){
+
+  int convertCurrentHrs = hours * 60 + minutes; // Convert current time (hours and minutes) into minutes
+  int minTimeDifference = 24 * 60; // Total minutes per day
+  static int nextAlarm[2] = {-1,-1};
+
+  for(int i = 0; i < 3; i++){ // Loop through alarms array
+    int calcHours = setAlarms[i].hours;
+    int calcMins = setAlarms[i].minutes;
+
+    int convertCalcHrs = calcHours * 60 + calcMins; // Convert alarm array hours and minutes into only minutes
+
+    int timeDifference = convertCalcHrs - convertCurrentHrs; // Calculate difference between the current and alarm
+    if(timeDifference < 0){ //Handle cases where alarm is next day
+        timeDifference += 24 * 60;
+    };
+
+    if (timeDifference > 0 && timeDifference < minTimeDifference) { //Ensure alarm is in the future and that the smallest time difference is used (first upcoming alarm)
+      minTimeDifference = timeDifference; // Keep track of closest alarm
+      nextAlarm[0] = calcHours;
+      nextAlarm[1] = calcMins;
+    };
+
+  }
+
+  return nextAlarm;
+}
+
+boolean triggerAlarm(){
+  for(int i = 0; i < 3; i++){ // Loop through alarms array
+    if(setAlarms[i].hours == hours){ // If matching alarm hours
+      if(setAlarms[i].minutes == minutes){ //If matching alarm minutes
+        if(seconds < 5){ //If seconds are within 5 of the beginning (makes sure alarm does not repeat and responds to users cancelation)
+          return true;
+        }else{
+          return false;
+        }
+      }else{
+        return false;
+      }
+    }
+  }
+  return false;
+}
+
 void loop() {
     // Clears the trigPin condition
   digitalWrite(trigPin, LOW);
@@ -77,6 +196,7 @@ void loop() {
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
+  callAlarm(); // Calls callAlarm function for buzzer
 
   duration = pulseIn(echoPin, HIGH);
   // Calculating the distance
@@ -118,21 +238,23 @@ void loop() {
   }
   lcd.print(seconds);
 
-  lcd.setCursor(0, 1);
+  int* nextAlarm = getNextAlarm();
 
-  lcd.print("Next:");
+  if(nextAlarm[0] != -1){ //If alarm exists
+    lcd.setCursor(0, 1);
+    
+    lcd.print("Next:");
 
-  if(alarm1Hours < 10){
-    lcd.print("0");
+    lcd.print(nextAlarm[0]);
+    lcd.print(":");
+    if(nextAlarm[1] < 10){
+      lcd.print("0");
+    }
+    lcd.print(nextAlarm[1]);
+
   }
-  lcd.print(alarm1Hours);
 
-  lcd.print(":");
 
-  if(alarm1Minutes < 10){
-    lcd.print("0");
-  }
-  lcd.print(alarm1Minutes);
 
   lcd.setCursor(15,1);
 
@@ -143,31 +265,15 @@ float temperatureC = (voltage - 0.5) * 100;
 lcd.print(temperatureC);
 lcd.print("C");
 
-if(hours == alarm1Hours && minutes == alarm1Minutes){
-  tone(piezo, 85); //Set the voltage to high and makes a noise
-  delay(1000);//Waits for 1000 milliseconds
-  noTone(piezo);//Sets the voltage to low and makes no noise
-  delay(1000);//Waits for 1000 milliseconds
 
+if(triggerAlarm() == true){ // Checks alarm status variable to set off alarm
+  active_buzzer = true;
+
+}else if(active_buzzer == true){ //If trigger alarm is returning false (ie time has passed, and the buzzer is still active, then start responding to user actions to cancel etc)
   if(distance_cm < 4){
-     alarm1Hours = 0;
-     alarm1Minutes = 0;
-   }
+    active_buzzer = false;
+  };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -244,7 +350,7 @@ if(hours == alarm1Hours && minutes == alarm1Minutes){
   // int stateB = digitalRead(DTPin);  // Read the current state of pinB
 
   // // Detect changes in rotary encoder rotation
-  // if (stateA != lastStateCLK) {
+  // if (stateA != encoderALastState) {
   //   if (stateB != stateA) {  // Clockwise rotation
   //     value++;
   //   } else {  // Counterclockwise rotation
@@ -264,8 +370,8 @@ if(hours == alarm1Hours && minutes == alarm1Minutes){
   //   lcd.print(value);  // Display the current value
   // }
 
-  // lastStateCLK = stateA;  // Update the last state of pinA
-  // lastStateDT = stateB;  // Update the last state of pinB
+  // encoderALastState = stateA;  // Update the last state of pinA
+  // encoderBLastState = stateB;  // Update the last state of pinB
 
   // delay(50);  // Small delay to debounce the encoder
 
@@ -310,5 +416,4 @@ if(hours == alarm1Hours && minutes == alarm1Minutes){
 
 
   
-
 
