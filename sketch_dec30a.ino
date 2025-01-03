@@ -41,19 +41,14 @@ int distance_inch;
 
 int hours = 13;
 int minutes = 59;
-int seconds = 40;
+int seconds = 55;
 
-int alarm1Hours = 14;
-int alarm1Minutes = 0;
 
-int alarm2Hours = 0;
-int alarm2Minutes = 0;
 
-int alarm3Hours = 0;
-int alarm3Minutes = 0;
 
 int selected_ringtone = 1; // Current selected ringtone 
 bool active_buzzer = false; // Controls if buzzer is audible or not.
+
 
 struct Tone{ // Individual Tone
   public:
@@ -114,32 +109,35 @@ unsigned long endTimeLast = 0;
 unsigned long repeatStartTime = 0;
 
 void callAlarm() {
+  static unsigned long lastToneTime = 0;  // Track the last time a tone was played
+
   if (!active_buzzer) return;  // Do not run if buzzer is not active
 
   unsigned long currentMs = millis();  // Get the current time in ms (non-blocking)
 
   // Check current end time
-  if (toneIndex < 2 && currentMs - endTimeLast >= 0) {
+  if (toneIndex < 2 && currentMs - endTimeLast >= 100) {  // Add 100ms gap
     Tone t = ringtones[selected_ringtone - 1].pattern[toneIndex];  // Get the tone details (pitch, duration)
 
     // Play tone
-    tone(piezo, t.pitch, t.duration);
+    tone(piezo, t.pitch, t.duration); 
 
-    // Update the time
-    endTimeLast = currentMs + t.duration;
+    delay(100);
 
-    // Move to next index
-    toneIndex++;
+    endTimeLast = currentMs + t.duration + 50; // Set end time of last note
+
+    toneIndex++; // Move onto next note
+
+    lastToneTime = currentMs; // Set end of last note
   }
 
   // Check if entire pattern played
   if (toneIndex >= 2) {
-    if (currentMs - repeatStartTime >= toneGap) {
+    if (currentMs - repeatStartTime >= 1000) {  // 1000ms gap between each tone playing
       toneIndex = 0;  // Reset to start
-      repeatStartTime = currentMs;  // Set the time
+      repeatStartTime = currentMs;  // Ser time
     }
   }
-
 }
 
 
@@ -188,6 +186,82 @@ boolean triggerAlarm(){
   return false;
 }
 
+unsigned long previousMs = 0;
+void timeFetch(){
+  unsigned long timeElapsedMs = millis();
+
+  if(timeElapsedMs - previousMs >= 1000){
+    seconds++;
+    if(seconds >= 60){
+      seconds -= 60;
+      minutes++;
+    }
+
+    if(minutes >= 60){
+      minutes -= 60;
+      hours++;
+    }
+
+    if(hours >= 24){
+      hours -= 24;
+    }
+
+    lcd.clear();
+    lcd.print("Time: ");
+
+    if(hours < 10){ // Way here is pretty similar to gpt and feels like it can be improved
+      lcd.print(0);
+    }
+    lcd.print(hours);
+    lcd.print(":");
+
+    if(minutes < 10){
+      lcd.print(0);
+    }
+    lcd.print(minutes);
+    lcd.print(":");
+
+    if(seconds < 10){
+      lcd.print(0);
+    }
+    lcd.print(seconds);
+
+    int* nextAlarm = getNextAlarm();
+
+    if(nextAlarm[0] != -1){ //If alarm exists
+      lcd.setCursor(0, 1);
+      
+      lcd.print("Next:");
+
+      lcd.print(nextAlarm[0]);
+      lcd.print(":");
+      if(nextAlarm[1] < 10){
+        lcd.print("0");
+      }
+      lcd.print(nextAlarm[1]);
+
+    }
+
+
+
+    lcd.setCursor(15,1);
+
+    int reading = analogRead(tempSensor);
+    float voltage = reading * (5.0 / 1024.0);
+    float temperatureC = (voltage - 0.5) * 100;
+
+    lcd.print(temperatureC);
+    lcd.print("C");
+
+    previousMs = timeElapsedMs;
+
+  }
+
+
+
+
+}
+
 void loop() {
     // Clears the trigPin condition
   digitalWrite(trigPin, LOW);
@@ -196,84 +270,25 @@ void loop() {
   digitalWrite(trigPin, HIGH);
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
-  callAlarm(); // Calls callAlarm function for buzzer
 
   duration = pulseIn(echoPin, HIGH);
   // Calculating the distance
   distance_cm = duration * 0.034 / 2; 
   distance_inch = duration * 0.0133 / 2;
-  
 
-  seconds++;
 
-  if (seconds == 60){
-    seconds = 0;
-    minutes++;
-    if(minutes == 60){
-      minutes = 0;
-      hours++;
-      if(hours == 24){
-        hours = 0;
-      }
-    }
+  timeFetch();
+
+  if(triggerAlarm() == true){ // Checks alarm status variable to set off alarm
+    active_buzzer = true;
+
+  }else if(active_buzzer == true){ //If trigger alarm is returning false (ie time has passed, and the buzzer is still active, then start responding to user actions to cancel etc)
+    if(distance_cm < 4){
+      active_buzzer = false;
+    };
   }
 
-  lcd.clear();
-  lcd.print("Time: ");
-
-  if(hours < 10){ // Way here is pretty similar to gpt and feels like it can be improved
-    lcd.print(0);
-  }
-  lcd.print(hours);
-  lcd.print(":");
-
-  if(minutes < 10){
-    lcd.print(0);
-  }
-  lcd.print(minutes);
-  lcd.print(":");
-
-  if(seconds < 10){
-    lcd.print(0);
-  }
-  lcd.print(seconds);
-
-  int* nextAlarm = getNextAlarm();
-
-  if(nextAlarm[0] != -1){ //If alarm exists
-    lcd.setCursor(0, 1);
-    
-    lcd.print("Next:");
-
-    lcd.print(nextAlarm[0]);
-    lcd.print(":");
-    if(nextAlarm[1] < 10){
-      lcd.print("0");
-    }
-    lcd.print(nextAlarm[1]);
-
-  }
-
-
-
-  lcd.setCursor(15,1);
-
-int reading = analogRead(tempSensor);
-float voltage = reading * (5.0 / 1024.0);
-float temperatureC = (voltage - 0.5) * 100;
-
-lcd.print(temperatureC);
-lcd.print("C");
-
-
-if(triggerAlarm() == true){ // Checks alarm status variable to set off alarm
-  active_buzzer = true;
-
-}else if(active_buzzer == true){ //If trigger alarm is returning false (ie time has passed, and the buzzer is still active, then start responding to user actions to cancel etc)
-  if(distance_cm < 4){
-    active_buzzer = false;
-  };
-}
+  callAlarm(); // Calls callAlarm function for buzzer
 
 
 
@@ -409,8 +424,6 @@ if(triggerAlarm() == true){ // Checks alarm status variable to set off alarm
   //   lcd.clear();
   //   lcd.print("NO");
   // }
-
-  delay(1000);
 
 }
 
