@@ -18,8 +18,6 @@ LiquidCrystal lcd(12,11,10,9,8,7);
 int count = 1;  // Initial value, can be 1 to 60
 int encoderAState;
 int encoderALastState;
-int encoderBState;
-int encoderBLastState;
 
 int buttonState1, buttonState2 = 0;
 int num = 0;
