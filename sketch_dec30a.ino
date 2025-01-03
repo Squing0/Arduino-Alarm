@@ -18,6 +18,8 @@ LiquidCrystal lcd(12,11,10,9,8,7);
 int count = 1;  // Initial value, can be 1 to 60
 int encoderAState;
 int encoderALastState;
+int encoderBState;
+int encoderBLastState;
 
 int buttonState1, buttonState2 = 0;
 int num = 0;
@@ -39,7 +41,7 @@ int distance_inch;
 
 int hours = 13;
 int minutes = 59;
-int seconds = 40;
+int seconds = 55;
 
 int alarm1Hours = 14;
 int alarm1Minutes = 0;
@@ -50,25 +52,38 @@ int alarm2Minutes = 0;
 int alarm3Hours = 0;
 int alarm3Minutes = 0;
 
-int selected_ringtone = 1;
-bool active_buzzer = false;
+int selected_ringtone = 1; // Current selected ringtone 
+bool active_buzzer = false; // Controls if buzzer is audible or not.
 
-struct Tone{
+struct Tone{ // Individual Tone
   public:
     int pitch;
     int duration;
 };
  
-struct Tones{
+struct Tones{ // Tones container
   public:
     char name;
     Tone pattern[2];
 };
  
-Tones ringtones[2] = {
-  {"Ringtone 1", {{440, 500}, {600, 500}}},
+Tones ringtones[2] = { // Ringtones along with tone and duration information
+  {"Ringtone 1", {{440, 200}, {600, 200}}},
   {"Ringtone 2", {{300, 200}, {400, 200}}}  
 } ;
+
+struct Alarm{ // Alarm Object
+  public:
+    int hours;
+    int minutes;
+};
+
+
+Alarm setAlarms[3] = { //All of the user set alarms
+  {14,0},
+  {18,0},
+  {21,0},
+};
 
 
 
@@ -91,17 +106,86 @@ void setup() {
 
 }
 
+int prevMs = 0; 
+int toneIndex = 0; // Keep track of tone within ringtone
+int toneDuration = 0; // Current tone duration
+int toneGap = 0; 
+unsigned long endTimeLast = 0;
+unsigned long repeatStartTime = 0;
 
-void callAlarm(){
-  if(active_buzzer == false) return;
- 
-  for(int i = 0; i < 2; i++){
-    Tone t = ringtones[selected_ringtone - 1].pattern[i];
+void callAlarm() {
+  if (!active_buzzer) return;  // Do not run if buzzer is not active
+
+  unsigned long currentMs = millis();  // Get the current time in ms (non-blocking)
+
+  // Check current end time
+  if (toneIndex < 2 && currentMs - endTimeLast >= 0) {
+    Tone t = ringtones[selected_ringtone - 1].pattern[toneIndex];  // Get the tone details (pitch, duration)
+
+    // Play tone
     tone(piezo, t.pitch, t.duration);
-    delay(t.duration + 50);
+
+    // Update the time
+    endTimeLast = currentMs + t.duration;
+
+    // Move to next index
+    toneIndex++;
   }
-  delay(50);
- 
+
+  // Check if entire pattern played
+  if (toneIndex >= 2) {
+    if (currentMs - repeatStartTime >= toneGap) {
+      toneIndex = 0;  // Reset to start
+      repeatStartTime = currentMs;  // Set the time
+    }
+  }
+
+}
+
+
+int* getNextAlarm(){
+
+  int convertCurrentHrs = hours * 60 + minutes; // Convert current time (hours and minutes) into minutes
+  int minTimeDifference = 24 * 60;
+  static int nextAlarm[2] = {-1,-1};
+
+  for(int i = 0; i < 3; i++){ // Loop through alarms array
+    int calcHours = setAlarms[i].hours;
+    int calcMins = setAlarms[i].minutes;
+
+    int convertCalcHrs = calcHours * 60 + calcMins; // Convert alarm array hours and minutes into only minutes
+
+    int timeDifference = convertCalcHrs - convertCurrentHrs; // Calculate difference between the current and alarm
+    if(timeDifference < 0){ //Handle cases where alarm is next day
+        timeDifference += 24 * 60;
+    };
+
+    if (timeDifference > 0 && timeDifference < minTimeDifference) { //Ensure alarm is in the future and that the smallest time difference is used (first upcoming alarm)
+      minTimeDifference = timeDifference; // Keep track of closest alarm
+      nextAlarm[0] = calcHours;
+      nextAlarm[1] = calcMins;
+    };
+
+  }
+
+  return nextAlarm;
+}
+
+boolean triggerAlarm(){
+  for(int i = 0; i < 3; i++){ // Loop through alarms array
+    if(setAlarms[i].hours == hours){ // If matching alarm hours
+      if(setAlarms[i].minutes == minutes){ //If matching alarm minutes
+        if(seconds < 5){ //If seconds are within 5 of the beginning (makes sure alarm does not repeat and responds to users cancelation)
+          return true;
+        }else{
+          return false;
+        }
+      }else{
+        return false;
+      }
+    }
+  }
+  return false;
 }
 
 void loop() {
@@ -154,21 +238,23 @@ void loop() {
   }
   lcd.print(seconds);
 
-  lcd.setCursor(0, 1);
+  int* nextAlarm = getNextAlarm();
 
-  lcd.print("Next:");
+  if(nextAlarm[0] != -1){ //If alarm exists
+    lcd.setCursor(0, 1);
+    
+    lcd.print("Next:");
 
-  if(alarm1Hours < 10){
-    lcd.print("0");
+    lcd.print(nextAlarm[0]);
+    lcd.print(":");
+    if(nextAlarm[1] < 10){
+      lcd.print("0");
+    }
+    lcd.print(nextAlarm[1]);
+
   }
-  lcd.print(alarm1Hours);
 
-  lcd.print(":");
 
-  if(alarm1Minutes < 10){
-    lcd.print("0");
-  }
-  lcd.print(alarm1Minutes);
 
   lcd.setCursor(15,1);
 
@@ -179,29 +265,15 @@ float temperatureC = (voltage - 0.5) * 100;
 lcd.print(temperatureC);
 lcd.print("C");
 
-if(hours == alarm1Hours && minutes == alarm1Minutes){
+
+if(triggerAlarm() == true){ // Checks alarm status variable to set off alarm
   active_buzzer = true;
 
+}else if(active_buzzer == true){ //If trigger alarm is returning false (ie time has passed, and the buzzer is still active, then start responding to user actions to cancel etc)
   if(distance_cm < 4){
-     alarm1Hours = 0;
-     alarm1Minutes = 0;
-     active_buzzer = false;
-   }
+    active_buzzer = false;
+  };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
