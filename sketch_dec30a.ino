@@ -41,7 +41,7 @@ int distance_inch;
 
 int hours = 13;
 int minutes = 59;
-int seconds = 55;
+int seconds = 40;
 
 int alarm1Hours = 14;
 int alarm1Minutes = 0;
@@ -146,7 +146,7 @@ void callAlarm() {
 int* getNextAlarm(){
 
   int convertCurrentHrs = hours * 60 + minutes; // Convert current time (hours and minutes) into minutes
-  int minTimeDifference = 24 * 60;
+  int minTimeDifference = 24 * 60; // Total minutes per day
   static int nextAlarm[2] = {-1,-1};
 
   for(int i = 0; i < 3; i++){ // Loop through alarms array
