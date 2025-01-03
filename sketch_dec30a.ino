@@ -53,7 +53,7 @@ int alarm3Hours = 0;
 int alarm3Minutes = 0;
 
 int selected_ringtone = 1;
-bool active_buzzer = true;
+bool active_buzzer = false;
 
 struct Tone{
   public:
@@ -190,6 +190,22 @@ if(hours == alarm1Hours && minutes == alarm1Minutes){
      active_buzzer = false;
    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
