@@ -45,6 +45,10 @@ int hours = 13;
 int minutes = 59;
 int seconds = 55;
 
+int menuIndex = 0;
+String previousScreen = "home";
+String currentScreen = "home";
+
 
 
 
@@ -109,6 +113,8 @@ int toneDuration = 0; // Current tone duration
 int toneGap = 0; 
 unsigned long endTimeLast = 0;
 unsigned long repeatStartTime = 0;
+int currentAlarmHrs = 0;
+int currentAlarmMins = 0;
 
 void callAlarm() {
   static unsigned long lastToneTime = 0;  // Track the last time a tone was played
@@ -123,8 +129,27 @@ void callAlarm() {
 
     // Play tone
     tone(piezo, t.pitch, t.duration); 
+    if(currentScreen == "home"){
+      lcd.setCursor(15,0);
+      //lcd.print("A"); // Seperate alarm indicator, small one if full bottom row text is not desired
+      lcd.setCursor(0,1);
+      lcd.print("ALARM: ");
+      lcd.print(currentAlarmHrs);
+      lcd.print(":");
+      if(currentAlarmMins < 10){
+        lcd.print("0");
+      }
+      lcd.print(currentAlarmMins);
+    };
 
     delay(100);
+
+    if(currentScreen == "home"){
+      lcd.setCursor(15,0);
+      lcd.print("");
+      lcd.setCursor(0,1);
+      lcd.print("");
+    };
 
     endTimeLast = currentMs + t.duration + 50; // Set end time of last note
 
@@ -176,6 +201,8 @@ boolean triggerAlarm(){
     if(setAlarms[i].hours == hours){ // If matching alarm hours
       if(setAlarms[i].minutes == minutes){ //If matching alarm minutes
         if(seconds < 5){ //If seconds are within 5 of the beginning (makes sure alarm does not repeat and responds to users cancelation)
+          currentAlarmHrs = setAlarms[i].hours; //Set current alarm hours / minutes for LCD screen use
+          currentAlarmMins = setAlarms[i].minutes;
           return true;
         }else{
           return false;
@@ -188,9 +215,6 @@ boolean triggerAlarm(){
   return false;
 }
 
-int menuIndex = 0;
-String previousScreen = "home";
-String currentScreen = "home";
 
 unsigned long previousMs = 0;
 void timeFetch(){
@@ -233,32 +257,42 @@ void timeFetch(){
       }
       lcd.print(seconds);
 
-      int* nextAlarm = getNextAlarm();
+      if(active_buzzer == false){
+        int* nextAlarm = getNextAlarm();
 
-      if(nextAlarm[0] != -1){ //If alarm exists
-        lcd.setCursor(0, 1);
-        
-        lcd.print("Next:");
+        if(nextAlarm[0] != -1){ //If alarm exists
+          lcd.setCursor(0, 1);
+          
+          lcd.print("Next:");
 
-        lcd.print(nextAlarm[0]);
-        lcd.print(":");
-        if(nextAlarm[1] < 10){
-          lcd.print("0");
+          lcd.print(nextAlarm[0]);
+          lcd.print(":");
+          if(nextAlarm[1] < 10){
+            lcd.print("0");
+          }
+          lcd.print(nextAlarm[1]);
+
         }
-        lcd.print(nextAlarm[1]);
-
       }
 
 
 
-      lcd.setCursor(15,1);
 
       int reading = analogRead(tempSensor);
       float voltage = reading * (5.0 / 1024.0);
       float temperatureC = (voltage - 0.5) * 100;
 
-      lcd.print(temperatureC);
-      lcd.print("C");
+      if(temperatureC > 10 && temperatureC <= 0){
+        lcd.setCursor(13,1);
+        lcd.print(temperatureC);
+        lcd.setCursor(15,1);
+        lcd.print("C");
+      }else{
+        lcd.setCursor(14,1);
+        lcd.print(temperatureC)
+        lcd.setCursor(15,1);
+        lcd.print("C");
+      }
 
     }
 
@@ -371,8 +405,10 @@ void loop() {
     active_buzzer = true;
 
   }else if(active_buzzer == true){ //If trigger alarm is returning false (ie time has passed, and the buzzer is still active, then start responding to user actions to cancel etc)
-    if(distance_cm < 4){
+    if(distance_cm < 4){ // Stop alarm
       active_buzzer = false;
+      currentAlarmHrs = 0;
+      currentAlarmMins = 0;
     };
   }
 
