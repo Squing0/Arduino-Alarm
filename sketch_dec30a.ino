@@ -551,11 +551,11 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
 }
 
 void deleteAlarmScreen() {
-  int selectedAlarmSlot = 0;  // Track the selected alarm slot
+  int selectedAlarmSlot = 0;  // Selected slot
   bool alarmDeleted = false;
-  bool buttonPressed = false;  // Track if button has been pressed
+  bool buttonPressed = false; 
 
-  // Start with the first alarm slot
+  // Initialise with the first alarm slot
   lcd.setCursor(0, 0);
   lcd.print("Delete Slot: ");
   lcd.print(selectedAlarmSlot + 1);  // Display alarm slot
@@ -563,10 +563,10 @@ void deleteAlarmScreen() {
   if (setAlarms[selectedAlarmSlot].hours == 0 && setAlarms[selectedAlarmSlot].minutes == 0) {
     lcd.print("Not Set");
   } else {
-    lcd.print(setAlarms[selectedAlarmSlot].hours < 10 ? "0" : "");  
+    lcd.print(setAlarms[selectedAlarmSlot].hours < 10 ? "0" : "");   // Add 0 if below 10
     lcd.print(setAlarms[selectedAlarmSlot].hours);
     lcd.print(":");
-    lcd.print(setAlarms[selectedAlarmSlot].minutes < 10 ? "0" : "");  
+    lcd.print(setAlarms[selectedAlarmSlot].minutes < 10 ? "0" : "");   // Add 0 if below 10
     lcd.print(setAlarms[selectedAlarmSlot].minutes);
     lcd.print(" - Delete?");
   }
@@ -580,13 +580,13 @@ void deleteAlarmScreen() {
     if (encoderAState != encoderALastState) {
       if (digitalRead(encoderB) != encoderAState) {  // Clockwise rotation
         selectedAlarmSlot++;
-        if (selectedAlarmSlot > 2) selectedAlarmSlot = 0;  // Wrap alarm slot back to 0 after 2
+        if (selectedAlarmSlot > 2) selectedAlarmSlot = 0;  // Wrap around
       } else {  // Counterclockwise rotation
         selectedAlarmSlot--;
-        if (selectedAlarmSlot < 0) selectedAlarmSlot = 2;  // Wrap alarm slot back to 2 if less than 0
+        if (selectedAlarmSlot < 0) selectedAlarmSlot = 2;  // Wrap around
       }
 
-      encoderALastState = encoderAState;  // Update the encoder state
+      encoderALastState = encoderAState;  // Update state
 
       // Update LCD to show the selected alarm slot
       lcd.clear();
@@ -627,19 +627,19 @@ void deleteAlarmScreen() {
 
       delay(2000);  // Display confirmation for 2 seconds
 
-      alarmDeleted = true;  // Exit loop after deleting the alarm
+      alarmDeleted = true;  // Exit loop
 
-      // Mark button as pressed to avoid multiple presses being detected
+      // Avoids multiple presses being detected
       buttonPressed = true;
     }
 
-    // Check if the button has been released, so we can detect the next press
+    // Check button released
     if (encoderBtnState == HIGH) {
-      buttonPressed = false;  // Reset button pressed state
+      buttonPressed = false;  // Reset button
     }
   }
 
-  lcd.clear();  // Clear display after confirmation
+  lcd.clear();
   currentScreen = "home";  // Go back to home screen
 }
 
