@@ -302,6 +302,7 @@ void timeFetch(){
 
 }
 
+
 void menuScreen(){
   char* menuOptions[5] = {
     "Back",
@@ -361,6 +362,12 @@ void menuScreen(){
 }
 
 
+// NOTE: Put setting time stuff here, store the hours,minutes,seconds as global variables that either the set alarm or set time functions can access
+void setTimeScreen(){
+  
+}
+
+
 void loop() {
     // Clears the trigPin condition
   digitalWrite(trigPin, LOW);
@@ -383,6 +390,8 @@ void loop() {
   timeFetch();
   if(currentScreen == "menu"){
     menuScreen();
+  }else if(currentScreen == "setTime"){
+    setTimeScreen();
   }
 
   int encoderBtnState = digitalRead(encoderBtn);  // Read the button state
@@ -485,8 +494,8 @@ void loop() {
   // lcd.print(lightSensorReading);
   // delay(100);
 
-  // int stateA = digitalRead(CLKPin);  // Read the current state of pinA
-  // int stateB = digitalRead(DTPin);  // Read the current state of pinB
+  // int stateA = digitalRead(encoderA);  // Read the current state of pinA
+  // int stateB = digitalRead(encoderB);  // Read the current state of pinB
 
   // // Detect changes in rotary encoder rotation
   // if (stateA != encoderALastState) {
