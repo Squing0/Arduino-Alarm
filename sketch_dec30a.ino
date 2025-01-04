@@ -33,13 +33,6 @@ long duration;
 int distance_cm;
 int distance_inch;
 
-// int melody1[] = {262, 294, 330, 349};
-// int duration1[] = {500, 500, 500, 500};
-
-// int melody2[] = {392, 440, 494, 523};
-// int duration2[] = {300, 300, 300, 300};
-
-//char[] currentTime = "12:40:00";
 
 int hours = 13;
 int minutes = 59;
@@ -682,23 +675,22 @@ void loop() {
   }
 
   int encoderBtnState = digitalRead(encoderBtn);  // Read the button state
-  if(currentScreen == "home" && active_buzzer == false){
-    if (encoderBtnState == LOW && encoderRls) { // If the button is pressed and was released
+  if(currentScreen == "home"){
+    if (encoderBtnState == LOW && encoderRls && active_buzzer == false) { // If the button is pressed and was released
         encoderPressed = true;  // Mark as pressed
-        encoderRls = false;  // Prevent immediate response
+        encoderRls = false;  // Prevent response
         menuIndex = 0;
         currentScreen = "menu";  // Go to menu
         delay(200); // Debounce
-    } else if (encoderBtnState == HIGH) {  // If the button released
+    } else if (active_buzzer == false && encoderBtnState == HIGH) {  // If the button released
         encoderPressed = false;  // Mark as released
         encoderRls = true;  // Allow button to be pressed
-    };
+    }else if (active_buzzer == true){
+      resetAlarm();
+    }
 
   };
 
-  if(encoderBtnState == LOW && active_buzzer == true){ //Also resets alarm by holding button if active
-    resetAlarm();
-  }
 
 
   if(triggerAlarm() == true){ // Checks alarm status variable to set off alarm
