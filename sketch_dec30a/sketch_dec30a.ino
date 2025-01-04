@@ -772,7 +772,7 @@ void loop() {
   if (triggerAlarm() == true) { // Checks alarm status variable to set off alarm
     active_buzzer = true;
   }else if(active_buzzer == true){ //If trigger alarm is returning false (ie time has passed, and the buzzer is still active, then start responding to user actions to cancel etc)
-    if(distance_cm < 4){ // Stop alarm
+    if(distance_cm < 4 && distance_cm != 0){ // Stop alarm
       resetAlarm();
     };
   }
