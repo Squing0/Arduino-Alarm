@@ -33,14 +33,6 @@ long duration;
 int distance_cm;
 int distance_inch;
 
-// int melody1[] = {262, 294, 330, 349};
-// int duration1[] = {500, 500, 500, 500};
-
-// int melody2[] = {392, 440, 494, 523};
-// int duration2[] = {300, 300, 300, 300};
-
-//char[] currentTime = "12:40:00";
-
 int hours = 13;
 int minutes = 59;
 int seconds = 55;
