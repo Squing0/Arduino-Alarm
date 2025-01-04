@@ -133,12 +133,16 @@ void callAlarm() {
         lcd.print("0");
       }
       lcd.print(currentAlarmMins);
+      if(distance_cm == 0){
+        lcd.setCursor(0,0);
+        lcd.print("! Sensor Fault !");
+      }
     };
 
     delay(100);
 
     if(currentScreen == "home"){
-      lcd.setCursor(15,0);
+      lcd.setCursor(0,0);
       lcd.print("");
       lcd.setCursor(0,1);
       lcd.print("");
@@ -768,7 +772,7 @@ void loop() {
   if (triggerAlarm() == true) { // Checks alarm status variable to set off alarm
     active_buzzer = true;
   }else if(active_buzzer == true){ //If trigger alarm is returning false (ie time has passed, and the buzzer is still active, then start responding to user actions to cancel etc)
-    if(distance_cm < 4){ // Stop alarm
+    if(distance_cm > 1 && distance_cm < 4 && distance_cm != 0){ // Stop alarm
       resetAlarm();
     };
   }
