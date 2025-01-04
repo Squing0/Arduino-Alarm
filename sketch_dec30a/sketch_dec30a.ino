@@ -133,12 +133,16 @@ void callAlarm() {
         lcd.print("0");
       }
       lcd.print(currentAlarmMins);
+      if(distance_cm == 0){
+        lcd.setCursor(0,0);
+        lcd.print("! Sensor Fault !");
+      }
     };
 
     delay(100);
 
     if(currentScreen == "home"){
-      lcd.setCursor(15,0);
+      lcd.setCursor(0,0);
       lcd.print("");
       lcd.setCursor(0,1);
       lcd.print("");
