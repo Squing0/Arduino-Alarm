@@ -282,14 +282,14 @@ void timeFetch(){
       float voltage = reading * (5.0 / 1024.0);
       float temperatureC = (voltage - 0.5) * 100;
 
-      if(temperatureC > 10 && temperatureC <= 0){
+      if(temperatureC > 10 && temperatureC > 0){
         lcd.setCursor(13,1);
         lcd.print(temperatureC);
         lcd.setCursor(15,1);
         lcd.print("C");
       }else{
         lcd.setCursor(14,1);
-        lcd.print(temperatureC)
+        lcd.print(temperatureC);
         lcd.setCursor(15,1);
         lcd.print("C");
       }
