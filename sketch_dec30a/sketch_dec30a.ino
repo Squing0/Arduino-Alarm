@@ -40,6 +40,7 @@ int seconds = 55;
 int menuIndex = 0;
 String prevScreen = "home";
 String currentScreen = "home";
+bool buttonPressed = false; 
 
 
 
@@ -56,7 +57,7 @@ struct Tone{ // Individual Tone
  
 struct Tones{ // Tones container
   public:
-    char name;
+    String name;
     Tone pattern[2];
 };
  
@@ -209,93 +210,86 @@ boolean triggerAlarm(){
 
 
 unsigned long previousMs = 0;
-void timeFetch(){
-  unsigned long timeElapsedMs = millis();
+void timeFetch() {
+  unsigned long currentMs = millis();
+  unsigned long elapsedMs = currentMs - previousMs;
 
-  if(timeElapsedMs - previousMs >= 1000){ // Check  if 1s has elapsed
-    seconds++;
-    if(seconds >= 60){ // If seconds is over 60, add a minute and reset
-      seconds -= 60;
-      minutes++;
+  if (elapsedMs >= 1000) { // Check if 1s has elapsed
+    unsigned long elapsedSeconds = elapsedMs / 1000;
+    previousMs += elapsedSeconds * 1000; // Update previousMs to the last full second
+
+    seconds += elapsedSeconds;
+    if (seconds >= 60) { // If seconds is over 60, add a minute and reset
+      minutes += seconds / 60;
+      seconds %= 60;
     }
 
-    if(minutes >= 60){ // If minutes is over 60, add an hour and reset
-      minutes -= 60;
-      hours++;
+    if (minutes >= 60) { // If minutes is over 60, add an hour and reset
+      hours += minutes / 60;
+      minutes %= 60;
     }
 
-    if(hours >= 24){ // If hours is over 24, reset
-      hours -= 24;
+    if (hours >= 24) { // If hours is over 24, reset
+      hours %= 24;
     }
 
-    if(currentScreen == "home"){ // If on home screen, display time
+    if (currentScreen == "home") { // If on home screen, display time
       lcd.clear();
       lcd.print("Time: ");
 
-      if(hours < 10){ //If hours is less than 10, add a 0 before
+      if (hours < 10) { // If hours is less than 10, add a 0 before
         lcd.print(0);
       }
       lcd.print(hours);
       lcd.print(":");
 
-      if(minutes < 10){ //If minutes is less than 10, add a 0 before
+      if (minutes < 10) { // If minutes is less than 10, add a 0 before
         lcd.print(0);
       }
       lcd.print(minutes);
       lcd.print(":");
 
-      if(seconds < 10){ //If seconds is less than 10, add a 0 before
+      if (seconds < 10) { // If seconds is less than 10, add a 0 before
         lcd.print(0);
       }
       lcd.print(seconds);
 
-      if(active_buzzer == false){ //If alarm is not active, display next alarm
-        int* nextAlarm = getNextAlarm(); //Get next alarm
+      if (!active_buzzer) { // If alarm is not active, display next alarm
+        int* nextAlarm = getNextAlarm(); // Get next alarm
 
-        if(nextAlarm[0] != -1){ //If alarm exists
+        if (nextAlarm[0] != -1) { // If alarm exists
           lcd.setCursor(0, 1);
-          
           lcd.print("Next:");
-
-          lcd.print(nextAlarm[0]); //Display next alarm hours
+          lcd.print(nextAlarm[0]); // Display next alarm hours
           lcd.print(":");
-          if(nextAlarm[1] < 10){ //If next alarm minutes is less than 10, add a 0 before
+          if (nextAlarm[1] < 10) { // If next alarm minutes is less than 10, add a 0 before
             lcd.print("0");
           }
           lcd.print(nextAlarm[1]);
-
         }
       }
 
+      int reading = analogRead(tempSensor); // Read temperature sensor
+      float voltage = reading * (5.0 / 1024.0); // Convert reading to voltage
+      float temperatureC = (voltage - 0.5) * 100; // Convert voltage to temperature
 
-
-
-      int reading = analogRead(tempSensor); //Read temperature sensor
-      float voltage = reading * (5.0 / 1024.0); //Convert reading to voltage
-      float temperatureC = (voltage - 0.5) * 100; //Convert voltage to temperature
-
-      if(temperatureC > 10 && temperatureC > 0){ //If temperature is greater than 10, display on LCD fully                              
-        lcd.setCursor(13,1);
+      if (temperatureC > 10 && temperatureC > 0) { // If temperature is greater than 10, display on LCD fully
+        lcd.setCursor(13, 1);
         lcd.print(temperatureC);
-        lcd.setCursor(15,1);
+        lcd.setCursor(15, 1);
         lcd.print("C");
-      }else{ //If temperature is less than 10, display on LCD with 0 before
-        lcd.setCursor(14,1);
+      } else { // If temperature is less than 10, display on LCD with 0 before
+        lcd.setCursor(14, 1);
         lcd.print(temperatureC);
-        lcd.setCursor(15,1);
+        lcd.setCursor(15, 1);
         lcd.print("C");
       }
-
     }
-
-    previousMs = timeElapsedMs; //Set previous time to current time
-
   }
-
 }
 
 
-void menuScreen(){
+void menuScreen() {
   char* menuOptions[5] = { // Menu options
     "Back",
     "Set Time",
@@ -310,55 +304,64 @@ void menuScreen(){
   lcd.print(">");
   lcd.print(menuOptions[menuIndex]);
 
-   // Read the current state of rotary encoder
-  int stateA = digitalRead(encoderA);
-  int stateB = digitalRead(encoderB);
+  int lastMenuIndex = menuIndex;  // Track the last menu index
+  bool optionSelected = false;
 
-  // Detect changes in rotary encoder rotation
-  if (stateA != encoderALastState) {
-    if (stateB != stateA) {  // Clockwise rotation
-      menuIndex++;
-      if (menuIndex >= 5) {
-        menuIndex = 0;  // Loop back to the first option
+  while (!optionSelected) {
+    // Read the current state of rotary encoder
+    int stateA = digitalRead(encoderA);
+    int stateB = digitalRead(encoderB);
+
+    // Detect changes in rotary encoder rotation
+    if (stateA != encoderALastState) {
+      if (stateB != stateA) {  // Clockwise rotation
+        menuIndex++;
+        if (menuIndex >= 5) {
+          menuIndex = 0;  // Loop back to the first option
+        }
+      } else {  // Counterclockwise rotation
+        menuIndex--;
+        if (menuIndex < 0) {
+          menuIndex = 4;  // Loop back to the last option (menuOptions[4])
+        }
       }
-    } else {  // Counterclockwise rotation
-      menuIndex--;
-      if (menuIndex < 0) {
-        menuIndex = 4;  // Loop back to the last option (menuOptions[4])
+
+      if (menuIndex != lastMenuIndex) {  // Update display only if menu index changes
+        // Clear and re-display the updated menu
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Scroll to select");
+        lcd.setCursor(0, 1);
+        lcd.print(">");
+        lcd.print(menuOptions[menuIndex]);
+
+        lastMenuIndex = menuIndex;  // Update last menu index
+      }
+
+      encoderALastState = stateA;  // Update last state of encoderA
+    }
+
+    // Check if the button is pressed
+    if (digitalRead(encoderBtn) == LOW) {  // Button is pressed
+      delay(50);  // Debounce delay to ensure the button is held
+      if (digitalRead(encoderBtn) == LOW) {  // Confirm button is still pressed
+      optionSelected = true;
+        if (menuOptions[menuIndex] == "Back") {
+          currentScreen = "home";  // Go back to the home screen
+        } else if (menuOptions[menuIndex] == "Set Time") {
+          currentScreen = "set_time";
+        } else if (menuOptions[menuIndex] == "Set Alarm") {
+          currentScreen = "set_alarm";
+        } else if (menuOptions[menuIndex] == "Delete Alarm") {
+          currentScreen = "delete_alarm";
+        } else if (menuOptions[menuIndex] == "Ringtone") {
+          currentScreen = "ringtones";
+        }
       }
     }
 
-    // Clear and re-display the updated menu
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Scroll to select");
-    lcd.setCursor(0, 1);
-    lcd.print(">");
-    lcd.print(menuOptions[menuIndex]);
-
-    encoderALastState = stateA;  // Update last state of encoderA
+    delay(10);
   }
-
-  // Update the last state 
-  encoderALastState = stateA;  
-  encoderBLastState = stateB;  
-
-  // Check if the button is pressed
-  if (digitalRead(encoderBtn) == LOW) {  // Button is pressed
-    if (menuOptions[menuIndex] == "Back") {
-      currentScreen = "home";  // Go back to the home screen
-    } else if (menuOptions[menuIndex] == "Set Time") {
-      currentScreen = "set_time";
-    } else if (menuOptions[menuIndex] == "Set Alarm") {
-      currentScreen = "set_alarm";
-    }else if (menuOptions[menuIndex] == "Delete Alarm") {
-      currentScreen = "delete_alarm";
-    }else if (menuOptions[menuIndex] == "Ringtone") {
-      currentScreen = "ringtones";
-    }
-  }
-
-  delay(30);  // Small delay to debounce encoder
 }
 
 
@@ -412,7 +415,7 @@ void step3(){
 void setTimeScreen(boolean seconds, String time_or_alarm) {
   int currentStep = 0; // 0: Set Hours, 1: Set Minutes, 2: Set Seconds, 3: Select Alarm Slot
   bool timeSet = false;
-  bool buttonPressed = false; 
+  buttonPressed = false; 
 
 
   step0(); //Start with setting hours
@@ -473,7 +476,7 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
 
     // Check if button is pressed and it wasn't pressed already
     if (encoderBtnState == LOW && !buttonPressed) {
-      delay(300);  // Debounce delay to avoid multiple button presses
+      delay(50);  // Debounce delay to avoid multiple button presses
 
       // Update LCD Stages, seperate from lcd updating code above but with LCD setting to ensure correct stage is displayed
       if (currentStep == 0) {  // After setting hours, move to set minutes
@@ -508,6 +511,7 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
     hours = setHours;
     minutes = setMinutes;
     seconds = setSeconds;
+    previousMs = millis();  // Reset previousMs to the last full second
   } else {
     lcd.print("Alarm Set: ");
     setAlarms[selectedAlarmSlot].hours = setHours;
@@ -541,7 +545,7 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
 void deleteAlarmScreen() {
   int selectedAlarmSlot = 0;  // Track the selected alarm slot
   bool alarmDeleted = false;
-  bool buttonPressed = false;  // Track if button has been pressed
+  buttonPressed = false;  // Track if button has been pressed
 
   // Start with the first alarm slot
   lcd.setCursor(0, 0);
@@ -599,7 +603,7 @@ void deleteAlarmScreen() {
 
     // Check if button is pressed and it wasn't pressed already
     if (encoderBtnState == LOW && !buttonPressed) {
-      delay(300);  // Debounce delay
+      delay(50);  // Debounce delay
 
       // Delete the selected alarm
       setAlarms[selectedAlarmSlot].hours = 0;
@@ -629,6 +633,73 @@ void deleteAlarmScreen() {
 
   lcd.clear();  // Clear display after confirmation
   currentScreen = "home";  // Go back to home screen
+}
+
+void ringtoneScreen() {
+  lcd.setCursor(0, 0);
+  lcd.print("Select Ringtone:");
+  lcd.setCursor(0, 1);
+  lcd.print(">");
+  lcd.print(ringtones[selected_ringtone - 1].name);
+
+  int lastRingtoneIndex = selected_ringtone;  // Track the last ringtone index
+  bool ringtoneSelected = false; // Track if button has been pressed
+
+  while (!ringtoneSelected) {
+    // Read the current state of rotary encoder
+    int stateA = digitalRead(encoderA);
+    int stateB = digitalRead(encoderB);
+
+    // Detect changes in rotary encoder rotation
+    if (stateA != encoderALastState) {
+      if (stateB != stateA) {  // Clockwise rotation
+        selected_ringtone++;
+        if (selected_ringtone > 2) {
+          selected_ringtone = 1;  // Loop back to the first ringtone
+        }
+      } else {  // Counterclockwise rotation
+        selected_ringtone--;
+        if (selected_ringtone < 1) {
+          selected_ringtone = 2;  // Loop back to the last ringtone
+        }
+      }
+
+      if (selected_ringtone != lastRingtoneIndex) {  // Update display only if ringtone index changes
+        // Clear and re-display the updated ringtone
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Select Ringtone:");
+        lcd.setCursor(0, 1);
+        lcd.print(">");
+        lcd.print(ringtones[selected_ringtone - 1].name);
+
+        lastRingtoneIndex = selected_ringtone;  // Update last ringtone index
+      }
+
+      encoderALastState = stateA;  // Update last state of encoderA
+    }
+
+
+    if (digitalRead(encoderBtn) == LOW && !buttonPressed) {  // Button is pressed and was not pressed before
+      delay(50);  // Debounce delay
+      if (digitalRead(encoderBtn) == LOW) {  // Confirm button is still pressed
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Ringtone Set:");
+        lcd.setCursor(0, 1);
+        lcd.print(ringtones[selected_ringtone - 1].name);
+        delay(2000);  // Display confirmation for 2 seconds
+
+        ringtoneSelected = true;
+        currentScreen = "home";  // Go back to the home screen
+      }
+      buttonPressed = true;  // Mark button as pressed
+    } else if (digitalRead(encoderBtn) == HIGH) {
+      buttonPressed = false;  // Reset button pressed state
+    }
+
+    delay(30);  // Small delay to debounce encoder
+  }
 }
 
 
@@ -667,6 +738,8 @@ void loop() {
     setTimeScreen(false, "alarm");
   }else if(currentScreen == "delete_alarm"){
     deleteAlarmScreen();
+  }else if(currentScreen == "ringtones"){
+    ringtoneScreen();
   }
 
   int encoderBtnState = digitalRead(encoderBtn);  // Read the button state
@@ -681,17 +754,19 @@ void loop() {
         encoderPressed = false;  // Mark as released
         encoderRls = true;  // Allow button to be pressed
     };
-
-  };
-
-  if(encoderBtnState == LOW && active_buzzer == true){ //Also resets alarm by holding button if active
-    resetAlarm();
   }
 
+  
 
-  if(triggerAlarm() == true){ // Checks alarm status variable to set off alarm
+  if (encoderBtnState == LOW && active_buzzer == true && !buttonPressed) { // Also resets alarm by holding button if active
+    resetAlarm();
+    buttonPressed = true; // Mark button as pressed
+  } else if (encoderBtnState == HIGH) {
+    buttonPressed = false; // Reset button pressed state
+  }
+
+  if (triggerAlarm() == true) { // Checks alarm status variable to set off alarm
     active_buzzer = true;
-
   }else if(active_buzzer == true){ //If trigger alarm is returning false (ie time has passed, and the buzzer is still active, then start responding to user actions to cancel etc)
     if(distance_cm < 4){ // Stop alarm
       resetAlarm();
