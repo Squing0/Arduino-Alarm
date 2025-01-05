@@ -343,7 +343,7 @@ void menuScreen() {
 
     // Check if the button is pressed
     if (digitalRead(encoderBtn) == LOW) {  // Button is pressed
-      delay(300);  // Debounce delay to ensure the button is held
+      delay(50);  // Debounce delay to ensure the button is held
       if (digitalRead(encoderBtn) == LOW) {  // Confirm button is still pressed
       optionSelected = true;
         if (menuOptions[menuIndex] == "Back") {
@@ -502,7 +502,7 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
 
     // Check if button is pressed and it wasn't pressed already
     if (encoderBtnState == LOW && !buttonPressed) {
-      delay(300);  // Debounce delay to avoid multiple button presses
+      delay(50);  // Debounce delay to avoid multiple button presses
 
       // Update LCD Stages, seperate from lcd updating code above but with LCD setting to ensure correct stage is displayed
         if (currentStep == 0) { // If on the 'go back' step
@@ -644,7 +644,7 @@ void deleteAlarmScreen() {
 
     // Check if button is pressed and it wasn't pressed already
     if (encoderBtnState == LOW && !buttonPressed) {
-      delay(300);  // Debounce delay
+      delay(50);  // Debounce delay
 
       // Delete the selected alarm
       setAlarms[selectedAlarmSlot].hours = 0;
@@ -722,7 +722,7 @@ void ringtoneScreen() {
 
 
     if (digitalRead(encoderBtn) == LOW && !buttonPressed) {  // Button is pressed and was not pressed before
-      delay(300);  // Debounce delay
+      delay(50);  // Debounce delay
       if (digitalRead(encoderBtn) == LOW) {  // Confirm button is still pressed
         lcd.clear();
         lcd.setCursor(0, 0);
