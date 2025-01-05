@@ -133,16 +133,12 @@ void callAlarm() {
         lcd.print("0");
       }
       lcd.print(currentAlarmMins);
-      if(distance_cm == 0){
-        lcd.setCursor(0,0);
-        lcd.print("! Sensor Fault !");
-      }
     };
 
     delay(100);
 
     if(currentScreen == "home"){
-      lcd.setCursor(0,0);
+      lcd.setCursor(15,0);
       lcd.print("");
       lcd.setCursor(0,1);
       lcd.print("");
@@ -347,7 +343,7 @@ void menuScreen() {
 
     // Check if the button is pressed
     if (digitalRead(encoderBtn) == LOW) {  // Button is pressed
-      delay(50);  // Debounce delay to ensure the button is held
+      delay(300);  // Debounce delay to ensure the button is held
       if (digitalRead(encoderBtn) == LOW) {  // Confirm button is still pressed
       optionSelected = true;
         if (menuOptions[menuIndex] == "Back") {
@@ -368,35 +364,41 @@ void menuScreen() {
   }
 }
 
-
 int setHours = 0;
 int setMinutes = 0;
 int setSeconds = 0;
 int selectedAlarmSlot = 0;
 
 //Time setting stages
-void step0(){
+void step0() { // Step for going back
+  lcd.setCursor(0, 0);
+  lcd.print("Go Back?");
+  lcd.setCursor(0, 1);
+  lcd.print("< Select to return");
+}
+
+void step1(){
   lcd.setCursor(0, 0);
   lcd.print("Set Hours: ");
   lcd.print(setHours < 10 ? "0" : "");  // Leading zero for hours if less than 10
   lcd.print(setHours);
 }
 
-void step1(){
+void step2(){
   lcd.setCursor(0, 0);
   lcd.print("Set Minutes: ");
   lcd.print(setMinutes < 10 ? "0" : "");  // Leading zero for minutes if less than 10
   lcd.print(setMinutes);
 }
 
-void step2(){
+void step3(){
   lcd.setCursor(0, 0);
   lcd.print("Set Seconds: ");
   lcd.print(setSeconds < 10 ? "0" : "");  // Leading zero for seconds if less than 10
   lcd.print(setSeconds);
 }
 
-void step3(){
+void step4(){
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Select Slot: ");
@@ -416,46 +418,63 @@ void step3(){
 
 
 
+
+
 void setTimeScreen(boolean seconds, String time_or_alarm) {
-  int currentStep = 0; // 0: Set Hours, 1: Set Minutes, 2: Set Seconds, 3: Select Alarm Slot
-  bool timeSet = false;
+  int currentStep = 0; // 0: Set Hours, 1: Set Minutes, 2: Set Seconds, 3: Select Alarm Slot 4: Go back to menu
+  enum timeSetstate {Setting, Done, Exit};
+  timeSetstate timeSet;
+  timeSet = Setting;
+  //bool timeSet = false;
   buttonPressed = false; 
 
 
-  step0(); //Start with setting hours
+  step0(); //Start with setting back option
 
   delay(500);  // Small delay to ensure correct loading
 
-  while (!timeSet) {
+  while (timeSet == Setting) {
     encoderAState = digitalRead(encoderA);
 
     // Handle encoder rotation
     if (encoderAState != encoderALastState) {
       if (digitalRead(encoderB) != encoderAState) {  // Clockwise rotation
-        if (currentStep == 0) {  // Set Hours
+
+        if (currentStep == 0) { // Go Back
+          lcd.clear();
+          currentStep = 1;
+          step1();
+        } else if (currentStep == 1) {  // Set Hours
           setHours++;
           if (setHours > 23) setHours = 0;  // Wrap hours back to 0 after 23
-        } else if (currentStep == 1) {  // Set Minutes
+        } else if (currentStep == 2) {  // Set Minutes
           setMinutes++;
           if (setMinutes > 59) setMinutes = 0;  // Wrap minutes back to 0 after 59
-        } else if (currentStep == 2) {  // Set Seconds
+        } else if (currentStep == 3) {  // Set Seconds
           setSeconds++;
           if (setSeconds > 59) setSeconds = 0;  // Wrap seconds back to 0 after 59
-        } else if (currentStep == 3) {  // Select Alarm Slot
+        } else if (currentStep == 4) {  // Select Alarm Slot
           selectedAlarmSlot++;
           if (selectedAlarmSlot > 2) selectedAlarmSlot = 0;  // Wrap alarm slot back to 0 after 2
         }
       } else {  // Counterclockwise rotation
-        if (currentStep == 0) {  // Set Hours
+          if (currentStep == 0) { // If on the 'go back' step
+          //setHours = hours;
+          //setMinutes = minutes;
+          //setSeconds = seconds;
+          //currentScreen = "menu"; // Go back to the menu
+          timeSet = Exit; // Exit the loop
+          //menuScreen();
+        } else if (currentStep == 1) {  // Set Hours
           setHours--;
           if (setHours < 0) setHours = 23;  // Wrap hours back to 23 if less than 0
-        } else if (currentStep == 1) {  // Set Minutes
+        } else if (currentStep == 2) {  // Set Minutes
           setMinutes--;
           if (setMinutes < 0) setMinutes = 59;  // Wrap minutes back to 59 if less than 0
-        } else if (currentStep == 2) {  // Set Seconds
+        } else if (currentStep == 3) {  // Set Seconds
           setSeconds--;
           if (setSeconds < 0) setSeconds = 59;  // Wrap seconds back to 59 if less than 0
-        } else if (currentStep == 3) {  // Select Alarm Slot
+        } else if (currentStep == 4) {  // Select Alarm Slot
           selectedAlarmSlot--;
           if (selectedAlarmSlot < 0) selectedAlarmSlot = 2;  // Wrap alarm slot back to 2 if less than 0
         }
@@ -472,7 +491,10 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
         step2();
       } else if (currentStep == 3) {  // Display selecting alarm slot
         step3();
+      } else if (currentStep == 4) {  // Display selecting alarm slot
+        step4();
       }
+
     }
 
     // Check encoder button press to proceed to the next step or finish
@@ -480,22 +502,29 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
 
     // Check if button is pressed and it wasn't pressed already
     if (encoderBtnState == LOW && !buttonPressed) {
-      delay(50);  // Debounce delay to avoid multiple button presses
+      delay(300);  // Debounce delay to avoid multiple button presses
 
       // Update LCD Stages, seperate from lcd updating code above but with LCD setting to ensure correct stage is displayed
-      if (currentStep == 0) {  // After setting hours, move to set minutes
-        currentStep = 1;
-        step1();
-      } else if (currentStep == 1 && seconds) {  // After setting minutes, move to set seconds if required
+        if (currentStep == 0) { // If on the 'go back' step
+          //setHours = hours;
+          //setMinutes = minutes;
+          //setSeconds = seconds;
+          //currentScreen = "menu"; // Go back to the menu
+          timeSet = Exit; // Exit the loop
+          //menuScreen();
+      } else if (currentStep == 1) {  // After setting hours, move to set minutes
         currentStep = 2;
         step2();
-      }else if (currentStep == 1 && time_or_alarm == "alarm") {  // After setting seconds, move to select alarm slot
+      } else if (currentStep == 2 && seconds) {  // After setting minutes, move to set seconds if required
         currentStep = 3;
         step3();
-      } else if (currentStep == 2 && time_or_alarm == "time") {  // After setting seconds, finish if setting time
-        timeSet = true;  // Exit loop after setting seconds
-      } else if (currentStep == 3) {  // After selecting alarm slot, finish
-        timeSet = true;  // Exit loop after selecting alarm slot
+      } else if (currentStep == 2 && time_or_alarm == "alarm") {  // After setting seconds, move to select alarm slot
+        currentStep = 4;
+        step4();
+      } else if (currentStep == 3 && time_or_alarm == "time") {  // After setting seconds, finish if setting time
+        timeSet = Done;  // Exit loop after setting seconds
+      } else if (currentStep == 4) {  // After selecting alarm slot, finish
+        timeSet = Done;  // Exit loop after selecting alarm slot
       }
 
       // Mark button as pressed to avoid multiple presses being detected
@@ -510,41 +539,49 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
 
   // Time is set, now show confirmation
   lcd.clear();
-  if (time_or_alarm == "time") {
-    lcd.print("Time Set: ");
-    hours = setHours;
-    minutes = setMinutes;
-    seconds = setSeconds;
-    previousMs = millis();  // Reset previousMs to the last full second
-  } else {
-    lcd.print("Alarm Set: ");
-    setAlarms[selectedAlarmSlot].hours = setHours;
-    setAlarms[selectedAlarmSlot].minutes = setMinutes;
-    lcd.print("SL");
-    lcd.print(selectedAlarmSlot);
-  }
-  lcd.setCursor(0, 1);
-  lcd.print(setHours < 10 ? "0" : "");  // Leading zero for hours if < 10
-  lcd.print(setHours);
-  lcd.print(":");
-  lcd.print(setMinutes < 10 ? "0" : "");  // Leading zero for minutes if < 10
-  lcd.print(setMinutes);
-  if (seconds) {
+  if (timeSet == Done){
+    if (time_or_alarm == "time") {
+      lcd.print("Time Set: ");
+      hours = setHours;
+      minutes = setMinutes;
+      seconds = setSeconds;
+    } else {
+      lcd.print("Alarm Set: ");
+      setAlarms[selectedAlarmSlot].hours = setHours;
+      setAlarms[selectedAlarmSlot].minutes = setMinutes;
+      lcd.print("SL");
+      lcd.print(selectedAlarmSlot);
+    }
+    lcd.setCursor(0, 1);
+    lcd.print(setHours < 10 ? "0" : "");  // Leading zero for hours if < 10
+    lcd.print(setHours);
     lcd.print(":");
-    lcd.print(setSeconds < 10 ? "0" : "");  // Leading zero for seconds if < 10
-    lcd.print(setSeconds);
+    lcd.print(setMinutes < 10 ? "0" : "");  // Leading zero for minutes if < 10
+    lcd.print(setMinutes);
+    if (seconds) {
+      lcd.print(":");
+      lcd.print(setSeconds < 10 ? "0" : "");  // Leading zero for seconds if < 10
+      lcd.print(setSeconds);
+    }
+    delay(2000);  // Display confirmation for 2 seconds
+
+    lcd.clear();  // Clear display after confirmation
+    currentScreen = "home";  // Go back to home screen
+
+    setHours = 0;
+    setMinutes = 0;
+    setSeconds = 0;
+    selectedAlarmSlot = 0;
   }
-  delay(2000);  // Display confirmation for 2 seconds
 
-  lcd.clear();  // Clear display after confirmation
-  currentScreen = "home";  // Go back to home screen
-
-  setHours = 0;
-  setMinutes = 0;
-  setSeconds = 0;
-  selectedAlarmSlot = 0;
-
+  else if (timeSet == Exit)
+  {
+    lcd.clear();
+    currentScreen = "menu";
+  }
 }
+
+
 
 void deleteAlarmScreen() {
   int selectedAlarmSlot = 0;  // Track the selected alarm slot
@@ -607,7 +644,7 @@ void deleteAlarmScreen() {
 
     // Check if button is pressed and it wasn't pressed already
     if (encoderBtnState == LOW && !buttonPressed) {
-      delay(50);  // Debounce delay
+      delay(300);  // Debounce delay
 
       // Delete the selected alarm
       setAlarms[selectedAlarmSlot].hours = 0;
@@ -685,7 +722,7 @@ void ringtoneScreen() {
 
 
     if (digitalRead(encoderBtn) == LOW && !buttonPressed) {  // Button is pressed and was not pressed before
-      delay(50);  // Debounce delay
+      delay(300);  // Debounce delay
       if (digitalRead(encoderBtn) == LOW) {  // Confirm button is still pressed
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -758,21 +795,19 @@ void loop() {
         encoderPressed = false;  // Mark as released
         encoderRls = true;  // Allow button to be pressed
     };
-  }
 
-  
+  };
 
-  if (encoderBtnState == LOW && active_buzzer == true && !buttonPressed) { // Also resets alarm by holding button if active
+  if(encoderBtnState == LOW && active_buzzer == true){ //Also resets alarm by holding button if active
     resetAlarm();
-    buttonPressed = true; // Mark button as pressed
-  } else if (encoderBtnState == HIGH) {
-    buttonPressed = false; // Reset button pressed state
   }
 
-  if (triggerAlarm() == true) { // Checks alarm status variable to set off alarm
+
+  if(triggerAlarm() == true){ // Checks alarm status variable to set off alarm
     active_buzzer = true;
+
   }else if(active_buzzer == true){ //If trigger alarm is returning false (ie time has passed, and the buzzer is still active, then start responding to user actions to cancel etc)
-    if(distance_cm > 1 && distance_cm < 4 && distance_cm != 0){ // Stop alarm
+    if(distance_cm < 4){ // Stop alarm
       resetAlarm();
     };
   }
