@@ -368,13 +368,15 @@ int setHours = 0;
 int setMinutes = 0;
 int setSeconds = 0;
 int selectedAlarmSlot = 0;
+int step0Active = false;
 
 //Time setting stages
 void step0() { // Step for going back
   lcd.setCursor(0, 0);
-  lcd.print("Go Back?");
+  lcd.print("Scroll to set");
   lcd.setCursor(0, 1);
-  lcd.print("< Select to return");
+  lcd.print("< Back");
+
 }
 
 void step1(){
@@ -459,12 +461,9 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
         }
       } else {  // Counterclockwise rotation
           if (currentStep == 0) { // If on the 'go back' step
-          //setHours = hours;
-          //setMinutes = minutes;
-          //setSeconds = seconds;
-          //currentScreen = "menu"; // Go back to the menu
-          timeSet = Exit; // Exit the loop
-          //menuScreen();
+            lcd.clear();
+            currentStep = 1;
+            step1();
         } else if (currentStep == 1) {  // Set Hours
           setHours--;
           if (setHours < 0) setHours = 23;  // Wrap hours back to 23 if less than 0
