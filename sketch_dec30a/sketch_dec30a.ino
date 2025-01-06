@@ -1,19 +1,19 @@
 #include <LiquidCrystal.h>
 
-LiquidCrystal lcd(12,11,10,9,8,7);
+LiquidCrystal lcd(2,3,4,5,6,7);
 
 #define button1 5
 #define button2 4
-#define piezo 6
+#define piezo 11
 #define potentiometer A0
 #define tempSensor A1
 #define lightSensor A2
-#define echoPin 3
-#define trigPin 2 
+#define echoPin 13
+#define trigPin 12
 
-#define encoderA 13  // Connect to CLK pin
-#define encoderB 1  // Connect to DT pin
-#define encoderBtn 0
+#define encoderA 8  // Connect to CLK pin
+#define encoderB 9  // Connect to DT pin
+#define encoderBtn 10
 
 int count = 1;  // Initial value, can be 1 to 60
 int encoderAState;
@@ -22,6 +22,7 @@ int encoderBState;
 int encoderBLastState;
 boolean encoderPressed;
 boolean encoderRls;
+boolean recentlySetTime = false;
 
 int buttonState1, buttonState2 = 0;
 int num = 0;
@@ -208,6 +209,8 @@ boolean triggerAlarm(){
   return false;
 }
 
+int updateSecondCount = 0;
+
 
 unsigned long previousMs = 0;
 void timeFetch() {
@@ -219,6 +222,11 @@ void timeFetch() {
     previousMs += elapsedSeconds * 1000; // Update previousMs to the last full second
 
     seconds += elapsedSeconds;
+    if (recentlySetTime) {
+      seconds = updateSecondCount;
+      recentlySetTime = false; // Reset the flag after adjusting the time
+    }
+
     if (seconds >= 60) { // If seconds is over 60, add a minute and reset
       minutes += seconds / 60;
       seconds %= 60;
@@ -419,9 +427,6 @@ void step4(){
 }
 
 
-
-
-
 void setTimeScreen(boolean seconds, String time_or_alarm) {
   int currentStep = 0; // 0: Set Hours, 1: Set Minutes, 2: Set Seconds, 3: Select Alarm Slot 4: Go back to menu
   enum timeSetstate {Setting, Done, Exit};
@@ -544,7 +549,7 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
       hours = setHours;
       minutes = setMinutes;
       seconds = setSeconds;
-    } else {
+   } else {
       lcd.print("Alarm Set: ");
       setAlarms[selectedAlarmSlot].hours = setHours;
       setAlarms[selectedAlarmSlot].minutes = setMinutes;
@@ -563,10 +568,11 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
       lcd.print(setSeconds);
     }
     delay(2000);  // Display confirmation for 2 seconds
-
+    recentlySetTime = true;
     lcd.clear();  // Clear display after confirmation
     currentScreen = "home";  // Go back to home screen
 
+    updateSecondCount = setSeconds;
     setHours = 0;
     setMinutes = 0;
     setSeconds = 0;
