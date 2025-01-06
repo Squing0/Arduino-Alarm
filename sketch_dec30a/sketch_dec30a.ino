@@ -557,7 +557,7 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
       setAlarms[selectedAlarmSlot].hours = setHours;
       setAlarms[selectedAlarmSlot].minutes = setMinutes;
       lcd.print("SL");
-      lcd.print(selectedAlarmSlot);
+      lcd.print(selectedAlarmSlot + 1);
     }
     lcd.setCursor(0, 1);
     lcd.print(setHours < 10 ? "0" : "");  // Leading zero for hours if < 10
