@@ -46,7 +46,7 @@ bool buttonPressed = false;
 
 
 
-int selected_ringtone = 1; // Current selected ringtone 
+int selected_ringtone = 3; // Current selected ringtone 
 bool active_buzzer = false; // Controls if buzzer is audible or not.
 
 
@@ -59,13 +59,16 @@ struct Tone{ // Individual Tone
 struct Tones{ // Tones container
   public:
     String name;
-    Tone pattern[2];
+    Tone pattern[10];
 };
  
-Tones ringtones[2] = { // Ringtones along with tone and duration information
-  {"Ringtone 1", {{440, 200}, {600, 200}}},
-  {"Ringtone 2", {{300, 200}, {400, 200}}}  
-} ;
+Tones ringtones[5] = { // Ringtones along with tone and duration information
+{"Ringtone 1", {{440, 1000}, {600, 1000}, {660, 1000}, {880, 1000}, {990, 1000}, {1100, 1000}, {1320, 1000}, {1480, 1000}, {1650, 1000}, {1760, 1000}}},
+{"Ringtone 2", {{300, 1000}, {400, 1000}, {500, 1000}, {600, 1000}, {700, 1000}, {800, 1000}, {900, 1000}, {1000, 1000}, {1100, 1000}, {1200, 1000}}},
+{"Ringtone 3", {{500, 1000}, {700, 1000}, {900, 1000}, {1100, 1000}, {1300, 1000}, {1500, 1000}, {1700, 1000}, {1900, 1000}, {2100, 1000}, {2300, 1000}}},
+{"Ringtone 4", {{250, 1000}, {350, 1000}, {450, 1000}, {550, 1000}, {650, 1000}, {750, 1000}, {850, 1000}, {950, 1000}, {1050, 1000}, {1150, 1000}}},
+{"Ringtone 5", {{550, 1000}, {750, 1000}, {950, 1000}, {1150, 1000}, {1350, 1000}, {1550, 1000}, {1750, 1000}, {1950, 1000}, {2150, 1000}, {2350, 1000}}}
+};
 
 struct Alarm{ // Alarm Object
   public:
@@ -118,7 +121,7 @@ void callAlarm() {
   unsigned long currentMs = millis();  // Get the current time in ms (non-blocking)
 
   // Check current end time
-  if (toneIndex < 2 && currentMs - endTimeLast >= 100) {  // Add 100ms gap
+  if (toneIndex < 10 && currentMs - endTimeLast >= 100) {  // Add 100ms gap
     Tone t = ringtones[selected_ringtone - 1].pattern[toneIndex];  // Get the tone details (pitch, duration)
 
     // Play tone
@@ -351,7 +354,7 @@ void menuScreen() {
 
     // Check if the button is pressed
     if (digitalRead(encoderBtn) == LOW) {  // Button is pressed
-      delay(50);  // Debounce delay to ensure the button is held
+      delay(200);  // Debounce delay to ensure the button is held
       if (digitalRead(encoderBtn) == LOW) {  // Confirm button is still pressed
       optionSelected = true;
         if (menuOptions[menuIndex] == "Back") {
@@ -506,7 +509,7 @@ void setTimeScreen(boolean seconds, String time_or_alarm) {
 
     // Check if button is pressed and it wasn't pressed already
     if (encoderBtnState == LOW && !buttonPressed) {
-      delay(50);  // Debounce delay to avoid multiple button presses
+      delay(200);  // Debounce delay to avoid multiple button presses
 
       // Update LCD Stages, seperate from lcd updating code above but with LCD setting to ensure correct stage is displayed
         if (currentStep == 0) { // If on the 'go back' step
@@ -649,7 +652,7 @@ void deleteAlarmScreen() {
 
     // Check if button is pressed and it wasn't pressed already
     if (encoderBtnState == LOW && !buttonPressed) {
-      delay(50);  // Debounce delay
+      delay(200);  // Debounce delay
 
       // Delete the selected alarm
       setAlarms[selectedAlarmSlot].hours = 0;
@@ -700,13 +703,13 @@ void ringtoneScreen() {
     if (stateA != encoderALastState) {
       if (stateB != stateA) {  // Clockwise rotation
         selected_ringtone++;
-        if (selected_ringtone > 2) {
+        if (selected_ringtone > 5) {
           selected_ringtone = 1;  // Loop back to the first ringtone
         }
       } else {  // Counterclockwise rotation
         selected_ringtone--;
         if (selected_ringtone < 1) {
-          selected_ringtone = 2;  // Loop back to the last ringtone
+          selected_ringtone = 5;  // Loop back to the last ringtone
         }
       }
 
@@ -727,7 +730,7 @@ void ringtoneScreen() {
 
 
     if (digitalRead(encoderBtn) == LOW && !buttonPressed) {  // Button is pressed and was not pressed before
-      delay(50);  // Debounce delay
+      delay(200);  // Debounce delay
       if (digitalRead(encoderBtn) == LOW) {  // Confirm button is still pressed
         lcd.clear();
         lcd.setCursor(0, 0);
@@ -917,7 +920,7 @@ void loop() {
   // encoderALastState = stateA;  // Update the last state of pinA
   // encoderBLastState = stateB;  // Update the last state of pinB
 
-  // delay(50);  // Small delay to debounce the encoder
+  // delay(200);  // Small delay to debounce the encoder
 
 //   encoderAState= digitalRead(encoderA);
 
