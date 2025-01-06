@@ -375,7 +375,7 @@ void step0() { // Step for going back
   lcd.setCursor(0, 0);
   lcd.print("Scroll to set");
   lcd.setCursor(0, 1);
-  lcd.print("< Back");
+  lcd.print("< Click Back");
 
 }
 
